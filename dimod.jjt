@@ -1,0 +1,241 @@
+options {
+MULTI=true;
+VISITOR=true;
+}
+PARSER_BEGIN(dimod)
+public class dimod
+{
+  public static boolean defaulting=true;
+  public static java.util.Hashtable table=new java.util.Hashtable();
+  public static java.util.Hashtable itable=new java.util.Hashtable();
+  public static String[] command;
+  public static void main(String args[]) throws ParseException
+  {
+    int i;
+    command = args;
+    System.err.println("Dimod");
+    dimod t = new dimod(System.in);
+    ASTCompilationUnit tree = null ;
+    try
+    {
+      tree = t.CompilationUnit() ;
+    } catch (ParseException e) {System.err.println(e.getMessage());}
+    if (tree !=null)
+    {
+      /* tree.dump(">>"); */ // Dump tree optionally.
+      dimodVisitor v = new dmv();
+      tree.jjtAccept(v,null);
+    } else
+    {
+      System.err.println("Parse error");
+    }
+  }
+}
+PARSER_END(dimod)
+
+TOKEN :
+{
+  <#STRINGCHARS:["$","a"-"z","A"-"Z","0"-"9",".","?","!" , "," , ";",":","(",")","[","]","{","}",
+"+","-","*","/","%","<","=",">","&","|"," ","^","\n","\r","\t"]>
+}
+
+SKIP :
+{
+ " "
+| "\n"
+| "\r"
+| "\t"
+}
+
+SKIP :
+{
+ "/*":InComment
+}
+
+<InComment> SKIP:
+{
+ "*/":DEFAULT
+}
+
+<InComment> MORE:
+{
+  < <STRINGCHARS> | "\\" | "\"" >
+}
+
+TOKEN :
+{
+ < RE: "re" >
+|
+ < IF: "if" >
+|
+ < WH: "wh" >
+|
+ < EL: "el" >
+|
+ < IN: "in" >
+|
+ < UN: "un" >
+|
+ < WRITEFILL: "writeFill">
+|
+ < WRITE: "write" >
+|
+ < NUMERIC_LITERAL: ( ["0"-"9","a"-"f","A"-"F"] )+ >
+|
+ < IDENTIFIER:  "$" (["a"-"z","A"-"Z","0"-"9"])* >
+|
+ < ASSIGNMENT_OPERATOR: <BINARY_OPERATOR> ":" >
+|
+ < BINARY_OPERATOR: "+" | "-" | "*" | "**" | "/" | "%" | "<" | "<=" | "=" | "!=" | ">" | ">=" | "&" | "|" | "^" | "<<" | ">>" >
+|
+ <STRING:  "\"" ( <STRINGCHARS> | "\\n" )* "\"" >
+
+}
+
+ASTCompilationUnit CompilationUnit() :
+{}
+{
+(Declaration() ";")*
+
+( LOOKAHEAD(Expression()
+<IDENTIFIER> )(Function())*
+|
+(Statement())*
+)
+
+("~" | <EOF> ) {return jjtThis ; }
+}
+
+void ExpressionList() : {}
+{
+Expression() ("," Expression())*
+}
+
+void Declaration() : {Token t;}
+{
+<IN> Expression()
+ t=<IDENTIFIER> {table.put(jjtThis,t.image);} ( "[" ExpressionList() "]")? (":" Expression() {if(!defaulting) throw new ParseException("Default value in parameter list.");} )?
+}
+
+void Function() : {Token t;int count=0;}
+{
+Expression()
+t=<IDENTIFIER>{table.put(jjtThis,t.image);} ( "[" ExpressionList() "]" )? "(" {defaulting=false;}(Declaration() {count++;} ("," Declaration() {count++;})* )? {defaulting=true;}")" {itable.put(jjtThis,new Integer(count));} (Declaration() ";" )* Statement()
+}
+
+void Statement() #void : {}
+{
+CompoundStatement()
+|
+ExpressionStatement()
+|
+IfStatement()
+|
+WhileStatement()
+|
+WriteStatement()
+|
+WriteFillStatement()
+|
+RepeatStatement()
+|
+NullStatement()
+}
+
+void NullStatement() : {}
+{
+";"
+}
+
+void IfStatement() : {}
+{
+<IF> "(" Expression() ")" Statement() (LOOKAHEAD(1) <EL> Statement() )?
+}
+
+void WhileStatement() : {}
+{
+<WH> "(" Expression() ")" Statement()
+}
+
+void RepeatStatement()  : {}
+{
+<RE> Statement() <UN> "(" Expression() ")"
+}
+
+void CompoundStatement()  : {}
+{
+"{" (Statement())* "}"
+}
+
+void ExpressionStatement() : {}
+{
+Expression()";"
+}
+
+void Expression() #void : {}
+{
+LOOKAHEAD( LValue() (<ASSIGNMENT_OPERATOR>|":") )Assignment()
+| BinaryExpression()
+}
+
+void Assignment()  : {Token t;}
+{
+LValue() (t=<ASSIGNMENT_OPERATOR>|t=":") {table.put(jjtThis,t.image);} Expression()
+}
+
+void LValue() : {Token t;}
+{
+ t= <IDENTIFIER>  {table.put(jjtThis,t.image);}( "[" (ExpressionList())? "]" {itable.put(jjtThis,new Boolean(true));})?
+}
+
+void BinaryExpression() : {}
+{
+UnaryExpression() (BinaryOperation())*
+}
+
+void BinaryOperation() : {Token t;}
+{
+t=<BINARY_OPERATOR> {table.put(jjtThis,t.image);} UnaryExpression()
+}
+
+void UnaryExpression() #void : {}
+{
+LOOKAHEAD(2)
+  FunctionCall()
+| "(" Expression() ")"
+| Id()
+| Literal()
+}
+
+void FunctionCall() : {Token t;}
+{
+t=<IDENTIFIER> {table.put(jjtThis,t.image);}"(" (ExpressionList())? ")"
+}
+
+void Literal() :
+{
+Token t;
+}
+{
+  t=<NUMERIC_LITERAL> {table.put(jjtThis,t.image);}
+}
+
+void Id() : {Token t;}
+{
+t= <IDENTIFIER>  {table.put(jjtThis,t.image);} ( "[" (ExpressionList())? "]" {itable.put(jjtThis,new Boolean(true));})?
+}
+
+void WriteStatement() : {}
+{
+<WRITE> "(" ( StringExpression() | Expression() )* ")" ";"
+}
+
+void WriteFillStatement() : {}
+{
+<WRITEFILL> "(" ( StringExpression() | LValue() )* ")" ";"
+}
+
+void StringExpression() : {Token t;}
+{
+t=  <STRING> {table.put(jjtThis,t.image);}
+}

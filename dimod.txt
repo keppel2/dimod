@@ -1,0 +1,199 @@
+To build and run:  install javacc .  jjtree dimod.jjt .  javacc dimod.jj .  javac *.java .  java dimod < hanoi.di .
+Suggested extension is ".di".
+
+The language is implemented in Java, using javacc and jjtree as tools to generate a parser and tree maker.
+A one-dimensional array of BigInteger is used to represent all variables.
+A limit of 2 to the 31st power minus 1 arises for many values due to the use of the Java "int".
+
+These are the width, bits to be shifted, and total elements in an array.
+In general, there will be the same limit for any grouping, such as functions and parameter lists.
+
+All program input is taken from standard input, so you'll need to redirect source code files.
+Since command lines vary, the command line parameters are limited to numeric-literals.
+
+Currently, only language structure errors are detected during parsing.
+So an undeclared variable would only be found during runtime.
+It seeks to retain the compactness of c while introducing the concept of variables whose bit width is explicitly defined.
+
+Full mode with functions as well as short mode with just declarations and statements.
+Hexadecimal only.
+All operations left-to-right, no need to remember an order of operations.
+
+Java or c programmers should recognize most of the operators.
+Assignment has been assigned to ":" so that "=" can test for equality.
+
+All names are preceded with a "$".  The "~" character can terminate a program as well as an end-of-file.
+
+Some to-do items for future versions of the language:
+
+Programs:
+A short program format consists of declarations followed by statements.  A full program format consists of global declarations followed by function declarations.
+
+The function "$main" must be declared somewhere, as this is executed.  The parameters for $main are given on the command line.
+If a return type for main is given, it is printed at program exit.
+
+Declarations:
+There is one data type--the unsigned integer.  The data storage requirement in bits is given as an expression after the keyword.
+The value of the variable defaults to 0, but can optionally be initialized by appending a colon and an expression (except in a parameter list).
+
+Arrays:
+Arrays can be given with any number of dimensions.  The dimension list is given between brackets and separated by commas.  Values earlier in the dimension list are more significant.
+
+When an array is used with less than the declared dimensions, it represents its serialization.
+
+Functions:
+Functions are declared by giving the return type (width and dimensions), a parameter list, local variables, and a statement.
+The return type, if not given a width of zero, is declared as the variable "$" (this name can never be manually declared).
+At the end of the function, the variable "$" is returned.  Function names are kept in a separate symbol table from variable names.
+
+Scope:
+A function can call any other function.  It can use its local variables (including parameters and return variable), as well as global variables.
+If a local variable has the same name as a global, the global cannot be accessed.
+Functions initialize, in order, the return variable, the parameter variables, then the local variables.
+
+Run time errors:
+Generally any deviation from expected input will be flagged with a run-time error.
+Array variables must always be referenced with brackets, and non-array variables cannot have brackets (even [0]).
+
+Integer:
+All integer literals are hexadecimal.
+
+Control Flow
+
+For expressions that are evaluated, they must resolve to one or zero, or a run-time error will result.
+if statement: (like the c "if")
+
+Expression in parantheses is evaluated. If one, the following statement is executed.
+If zero, "el" statement is executed, if it exists.  The "el" statement binds to the closest previous "if" statement.
+wh statement: (like the c "while")
+
+Expression in parentheses is evaluated. If one, statement is executed, then process begins again.
+If zero, drops through.
+re statement: (like the pascal "repeat")
+Statement is executed.  Expression in parantheses is evaluated.  If one, drops through.  If zero, process begins again.
+
+
+All integer expressions are handled with infinite signed precision.  However, negative numbers cannot be assigned to a variable.
+
+Binary operators are evaluated left to right.  Logical operators give a 1 if true, 0 if false.  The operators are explained as follows:
+
+Binary operators (binary-operator):
+Addition +
+Subtraction -
+Multiplication *
+Division round-to-zero /
+Power ** (exponent cannot be negative)
+Less than <
+Equal =
+Greater than >
+
+The following operations cannot accept negative arguments:
+Remainder %
+Bitwise AND &
+Bitwise OR |
+Bitwise XOR ^
+Shift left <<
+Shift right >>
+
+A comment is surrounded by "/*" and the two characters in reverse.  Characters that may be in strings can be in a comment (except \).
+
+The following are whitespace and divide tokens:
+
+space
+CR
+LF
+Tab
+beginning-of-text
+end-of-text
+comment
+
+Conventions used:
+- indicates a range.
+* denotes 0 or more of the preceding item.
+{ } groups a set of items.
+| Indicates choice within a group.
+
+Tokens are operators or one of the following:
+el in if re un wh ( ) [ ] { } ;
+
+identifier: $ { a-z | A-Z | 0-9 }*
+numeric-literal: { 0 | { 1-9 | A-F | a-f } {0-9 | A-F | a-f } }
+string:
+
+Strings are surrounded by " marks, and consist of [" ","$","a"-"z","A"-"Z","0"-"9",".","?","!",",",";",":",
+"+","-","*","/","%","<","=",">","&","|","^"].  Also, the sequence "\n" may be given in a string to indicate a new line.
+
+Standard libraries:
+
+write( {expression | string}* )
+
+-Expressions are evaluated and printed.  Strings are printed.
+
+writeFill( {LValue | string}* )
+
+-Same as write, but only variables are allowed, and they are padded with zeros to be the same length as the highest value allowed for that variable.
+
+Examples:
+
+Examples programs:
+
+Short program format "Hello".
+
+write("Hello, universe!");
+
+Full format.
+
+in 4 $global:2; /*Declares a four bit global integer called $global and initializes it to 2.*/
+1 $main() /*Starts a function declaration.  A return bit is declared for this function, $main.*/
+in 4 $local; /*Declares a four bit local variable.  It defaults to 0.*/
+{
+  $local:$global; /*$local is set to $global's value (2).*/
+  write($local); /*Writes "2".*/
+  $:1; /*The return variable is set to one.*/
+}
+
+Prime number sieve.
+
+/*Prints prime numbers from 2 through 1FFFh using prime number sieve.*/
+in 1 $flags [2000];  /*An array of one-bit wide integers, length 2000h*/
+in D $a : 2;  /*The highest Dh-bit integer is 1FFFh.*/
+in D $b;
+0 $main()
+{
+$a-:1;  /*Subtract one as the loop adds one at the beginning.*/
+re
+{
+  $a+:1;
+  $b:$a;
+  if($flags[$b] ^ 1 )
+  {
+    write($a"\n");
+    wh( ($b+$a)<=1FFF )
+    {
+      $b+:$a;
+      $flags[$b]:1; 
+    }
+  }
+} un($a=1FFF);
+}
+
+
+in 4 $pegs [3];
+0 $move(in 2 $n,in 2 $A, in 2 $B, in 2 $C)
+{
+if($n>0)
+{
+$move($n-1,$A,$C,$B);
+$pegs[$A]:$pegs[$A]-1;
+$pegs[$C]:$pegs[$C]+1;
+writeFill($pegs[]"\n");
+$move($n-1,$B,$A,$C);
+}
+}
+0 $main()
+{$pegs[0]:3;
+writeFill("Start:"$pegs[]"\n");
+$move(3,0,1,2);
+writeFill("End:"$pegs[]"\n");
+}
+
